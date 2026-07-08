@@ -544,20 +544,13 @@ function triggerDownload(url, filename) {
 async function downloadFile(url, filename, type) {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 
-  // For videos: always open in new tab (CDN doesn't allow CORS fetch)
-  // User can right-click / long-press to save
-  if (type === 'video') {
-    window.open(url, '_blank');
-    showToast('已打开视频，请右键/长按选择"保存"', 'success');
-    return true;
-  }
+  // Download proxy URL (same-origin, no CORS issues)
+  const proxyUrl = `${BASE}/api/proxy?url=${encodeURIComponent(url)}`;
 
-  // For images: try proxy download first, then direct download
-  for (const source of [PROXY_DL ? `${PROXY_DL}?url=${encodeURIComponent(url)}` : null, url]) {
-    if (!source) continue;
-    try {
-      const resp = await fetch(source, { signal: AbortSignal.timeout(20000) });
-      if (!resp.ok) continue;
+  // Try proxy download first (works from anywhere, no CORS)
+  try {
+    const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(30000) });
+    if (resp.ok) {
       const blob = await resp.blob();
       const blobUrl = URL.createObjectURL(blob);
       if (isIOS) {
@@ -568,14 +561,14 @@ async function downloadFile(url, filename, type) {
       }
       setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
       return true;
-    } catch (e) {
-      console.log('[去水印] 下载失败:', e.message);
     }
+  } catch (e) {
+    console.log('[去水印] 代理下载失败:', e.message);
   }
 
-  // Last resort: open in new tab
+  // Fallback: open CDN URL directly (user long-presses to save)
   window.open(url, '_blank');
-  showToast('请在新页面右键/长按保存', 'success');
+  showToast('请长按视频选择"保存"', 'success');
   return true;
 }
 
