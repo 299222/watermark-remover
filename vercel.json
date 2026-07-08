@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/parse.js": { "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/api/parse", "destination": "/api/parse.js" }
+  ]
+}

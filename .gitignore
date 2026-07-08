@@ -1,0 +1,4 @@
+node_modules
+.vercel
+picture
+*.ps1

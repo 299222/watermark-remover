@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>去水印工具</title>
+<meta name="description" content="抖音、小红书内容去水印下载">
+<meta name="theme-color" content="#667eea">
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --bg: #0f0f23;
+  --surface: #1a1a3e;
+  --surface2: #252550;
+  --text: #e8e8f0;
+  --text2: #9e9eb8;
+  --accent: #667eea;
+  --accent2: #764ba2;
+  --success: #48bb78;
+  --error: #f56565;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+@media (prefers-color-scheme:light) {
+  :root {
+    --bg: #f5f5fa;
+    --surface: #ffffff;
+    --surface2: #eef0f7;
+    --text: #1a1a2e;
+    --text2: #6b6b80;
+  }
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
+  background:var(--bg);color:var(--text);min-height:100dvh;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:480px;margin:0 auto;padding:0 16px 100px}
+/* header */
+.header{padding:36px 0 24px;text-align:center}
+.header h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header p{color:var(--text2);font-size:14px;margin-top:4px}
+/* platforms */
+.platforms{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+.platforms span{
+  font-size:12px;padding:4px 14px;border-radius:20px;background:var(--surface2);color:var(--text2);
+  border:1px solid transparent;transition:.2s;
+}
+.platforms span.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* input */
+.input-group{
+  display:flex;gap:10px;background:var(--surface);border-radius:var(--radius);padding:6px;
+  box-shadow:0 4px 24px rgba(0,0,0,.15);border:2px solid transparent;transition:.3s;
+}
+.input-group:focus-within{border-color:var(--accent)}
+.input-group input{
+  flex:1;border:none;background:transparent;padding:12px 16px;font-size:15px;color:var(--text);outline:none;
+}
+.input-group input::placeholder{color:var(--text2)}
+.input-group button{
+  padding:10px 24px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap;
+}
+.input-group button:active{transform:scale(.95)}
+.input-group button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+/* hint */
+.hint{color:var(--text2);font-size:12px;margin-top:10px;text-align:center}
+.hint a{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--accent)}
+/* loading */
+.loading{display:none;flex-direction:column;align-items:center;padding:40px 0}
+.loading.show{display:flex}
+.spinner{width:44px;height:44px;border:4px solid var(--surface2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{color:var(--text2);margin-top:16px;font-size:14px}
+/* error */
+.error{display:none;background:rgba(245,101,101,.12);border:1px solid rgba(245,101,101,.3);border-radius:var(--radius-sm);padding:16px;margin-top:16px;color:var(--error);font-size:14px}
+.error.show{display:block}
+/* result */
+.result{display:none;flex-direction:column;gap:16px;margin-top:20px}
+.result.show{display:flex}
+/* card */
+.card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.card-body{padding:18px}
+.card-title{font-weight:600;font-size:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-meta{color:var(--text2);font-size:13px;margin-top:4px;display:flex;align-items:center;gap:8px}
+.card-meta .tag{font-size:11px;background:var(--surface2);padding:2px 10px;border-radius:10px}
+/* media */
+.media-wrap{position:relative;background:#000;display:flex;align-items:center;justify-content:center;max-height:50vh;overflow:hidden}
+.media-wrap img,.media-wrap video{width:100%;display:block;max-height:50vh;object-fit:contain}
+/* image grid */
+.image-grid{display:grid;gap:4px}
+.image-grid.cols-1{grid-template-columns:1fr}
+.image-grid.cols-2{grid-template-columns:1fr 1fr}
+.image-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.image-grid img{width:100%;aspect-ratio:1;object-fit:cover;cursor:pointer;border-radius:4px;transition:.2s}
+.image-grid img:active{opacity:.7}
+/* actions */
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.actions .btn{
+  flex:1;min-width:120px;padding:14px 20px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;
+  cursor:pointer;transition:.2s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.actions .btn:active{transform:scale(.96)}
+.actions .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.actions .btn-secondary{background:var(--surface2);color:var(--text)}
+.actions .btn-success{background:var(--success);color:#fff}
+/* history */
+.history-wrap{margin-top:32px}
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.history-header h3{font-size:16px;font-weight:600}
+.history-header button{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:4px 8px}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-item{
+  display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:var(--radius-sm);padding:10px 14px;
+  cursor:pointer;transition:.2s;
+}
+.history-item:active{opacity:.7}
+.history-item img,.history-item .thumb{
+  width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.history-item .info{flex:1;min-width:0}
+.history-item .info .title{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item .info .sub{font-size:11px;color:var(--text2)}
+.history-item .del{
+  background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:4px;line-height:1;
+}
+/* toast */
+.toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--surface);
+  color:var(--text);padding:12px 24px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;
+  box-shadow:0 8px 32px rgba(0,0,0,.3);opacity:0;transition:.3s;z-index:999;pointer-events:none;
+  border:1px solid var(--surface2);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{color:var(--success)}
+.toast.error{color:var(--error)}
+/* badge */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--text2)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text2)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="file-warning" id="fileWarning" style="display:none;background:rgba(245,101,101,.12);border:1px solid rgba(245,101,101,.3);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;color:var(--error);font-size:13px">
+    ⚠️ 检测到通过 <code>file://</code> 直接打开，浏览器会阻止跨域请求导致功能不可用。<br><br>
+    请先在电脑端运行 <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:12px">node proxy.mjs</code>，然后在手机浏览器访问显示的地址。
+  </div>
+
+  <div class="header">
+    <h1>去水印</h1>
+    <p>粘贴抖音 / 小红书链接，一键去水印下载</p>
+  </div>
+
+  <div class="platforms">
+    <span class="active">抖音</span>
+    <span>小红书</span>
+    <span>快手</span>
+    <span>微博</span>
+  </div>
+
+  <div class="input-group" id="inputGroup">
+    <input type="url" id="linkInput" placeholder="粘贴分享链接..." autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="parseBtn">解析</button>
+  </div>
+  <div class="hint">支持抖音 <span class="badge">v.douyin.com</span> 小红书 <span class="badge">xhslink.com</span> <span class="badge">xiaohongshu.com</span> 等</div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">正在解析...</p>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="result" id="result">
+    <div class="card">
+      <div class="media-wrap" id="mediaWrap"></div>
+      <div class="card-body">
+        <div class="card-title" id="resultTitle"></div>
+        <div class="card-meta" id="resultMeta"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="image-grid" id="imageGrid"></div>
+      </div>
+    </div>
+    <div class="actions" id="actions"></div>
+  </div>
+
+  <div class="history-wrap" id="historyWrap">
+    <div class="history-header">
+      <h3>下载记录</h3>
+      <button id="clearHistoryBtn">清空</button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Detect environment
+const IS_LOCAL_SERVER = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const BASE = location.origin;
+
+// Vercel deployed or local proxy
+const PROXY_API = `${BASE}/api/parse`;
+const PROXY_DL = IS_LOCAL_SERVER ? `${BASE}/api/proxy` : null;
+
+const CONFIG = {
+  apis: [
+    { name: '52vmy', url: (u)=>`https://api.52vmy.cn/api/wl/shipin?url=${encodeURIComponent(u)}&type=json`, parser: parse52vmy },
+    { name: 'douyin-wtf', url: (u)=>`https://api.douyin.wtf/api?url=${encodeURIComponent(u)}`, parser: parseDyw },
+    { name: 'lolimi', url: (u)=>`https://api.lolimi.cn/API/dy/api.php?url=${encodeURIComponent(u)}`, parser: parseLolimi },
+    { name: 'v1douyin', url: (u)=>`https://api.v1douyin.com/api/video?url=${encodeURIComponent(u)}`, parser: parseGeneric },
+  ],
+  corsProxies: [
+    u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  ],
+  platforms: {
+    douyin: [/v\.douyin\.com/i,/douyin\.com\/video/i,/iesdouyin/i,/dytk:/],
+    xiaohongshu: [/xhslink\.com/i,/xiaohongshu\.com/i,/xhscdn\.com/i],
+    kuaishou: [/kuaishou\.com/i,/gifshow\.com/i],
+    weibo: [/weibo\.com/i,/weibo\.cn\/u/i],
+  }
+};
+
+const $ = s=>document.querySelector(s);
+const $$ = s=>document.querySelectorAll(s);
+const linkInput = $('#linkInput');
+const parseBtn = $('#parseBtn');
+const loading = $('#loading');
+const loadingText = $('#loadingText');
+const error = $('#error');
+const result = $('#result');
+const resultTitle = $('#resultTitle');
+const resultMeta = $('#resultMeta');
+const mediaWrap = $('#mediaWrap');
+const imageGrid = $('#imageGrid');
+const actions = $('#actions');
+const historyList = $('#historyList');
+const toast = $('#toast');
+const platformTags = $$('.platforms span');
+
+let currentData = null;
+let toastTimer = null;
+
+function detectPlatform(url) {
+  for (const [name, patterns] of Object.entries(CONFIG.platforms)) {
+    if (patterns.some(p=>p.test(url))) return name;
+  }
+  const kw = url.toLowerCase();
+  if(kw.includes('douyin')||kw.includes('抖音')) return 'douyin';
+  if(kw.includes('xhslink')||kw.includes('xiaohongshu')||kw.includes('小红书')||kw.includes('xhs')) return 'xiaohongshu';
+  if(kw.includes('kuaishou')||kw.includes('快手')) return 'kuaishou';
+  if(kw.includes('weibo')||kw.includes('微博')) return 'weibo';
+  return 'douyin';
+}
+
+function updatePlatformIndicator(platform) {
+  const labels = { douyin:'抖音', xiaohongshu:'小红书', kuaishou:'快手', weibo:'微博' };
+  platformTags.forEach((el,i)=>{
+    const tag = labels[['douyin','xiaohongshu','kuaishou','weibo'][i]]||el.textContent;
+    el.textContent = tag;
+    el.classList.toggle('active', Object.keys(labels).indexOf(platform)===i);
+  });
+}
+
+linkInput.addEventListener('input',()=>{
+  const val = linkInput.value.trim();
+  if(val){
+    const platform = detectPlatform(val);
+    updatePlatformIndicator(platform);
+    parseBtn.textContent = '解析';
+  } else {
+    platformTags.forEach(el=>el.classList.remove('active'));
+    platformTags[0].classList.add('active');
+  }
+});
+
+async function tryParse(url) {
+  // Try local proxy first (if available)
+  if (PROXY_API) {
+    try {
+      const resp = await fetch(`${PROXY_API}?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(12000) });
+      if (resp.ok) {
+        const j = await resp.json();
+        if (j.code === 200 && j.data) {
+          console.log('[去水印] 本地代理解析成功');
+          return j.data;
+        }
+      }
+    } catch (e) {
+      console.log('[去水印] 本地代理不可用, 切换第三方API:', e.message);
+    }
+  }
+
+  // Try third-party APIs
+  for (const api of CONFIG.apis) {
+    try {
+      const apiUrl = api.url(url);
+      const ctrl = new AbortController();
+      const to = setTimeout(()=>ctrl.abort(), 8000);
+      const resp = await fetch(apiUrl, { signal: ctrl.signal });
+      clearTimeout(to);
+      if(!resp.ok) continue;
+      const text = await resp.text();
+      let json;
+      try { json = JSON.parse(text); } catch(e) { continue; }
+      const data = api.parser(json, url);
+      if(data && data.type!=='unknown') {
+        console.log(`[去水印] API ${api.name} 解析成功`);
+        return data;
+      }
+    } catch(e) {
+      console.log(`[去水印] API ${api.name} 失败:`, e.message);
+    }
+  }
+  return await tryCorsFallback(url);
+}
+
+function extractFromHtml(html, url) {
+  let data = null;
+  const jsonMatch = html.match(/<script[^>]*>window\.__INITIAL_STATE__\s*=\s*({.+?});?<\/script>/);
+  if(jsonMatch) {
+    try {
+      const state = JSON.parse(jsonMatch[1]);
+      const platform = detectPlatform(url);
+      if(platform==='douyin') {
+        const v = state?.videoInfoRes?.item_list?.[0]?.video;
+        if(v) {
+          data = {
+            type:'video',
+            title: state?.videoInfoRes?.item_list?.[0]?.desc||'',
+            author: state?.videoInfoRes?.item_list?.[0]?.author?.nickname||'',
+            videoUrl: v.play_addr?.url_list?.[0]||v.download_addr?.url_list?.[0]||'',
+            cover: v.cover?.url_list?.[0]||v.origin_cover?.url_list?.[0]||'',
+            images: [],
+            platform: 'douyin',
+          };
+        }
+      } else if(platform==='xiaohongshu') {
+        const note = state?.note?.noteDetailMap?.[Object.keys(state?.note?.noteDetailMap||{})[0]]?.note;
+        if(note) {
+          data = {
+            type: note.type==='video'?'video':'image',
+            title: note.title||note.desc||'',
+            author: note.user?.nickname||'',
+            videoUrl: note.video?.media?.stream?.h264?.[0]?.master_url||note.video?.consumer?.origin_video_key||'',
+            images: (note.imageList||[]).map(i=>i.urlDefault||i.url||'').filter(Boolean),
+            cover: note.cover?.urlDefault||note.cover?.url||'',
+            platform: 'xiaohongshu',
+          };
+        }
+      }
+    } catch(e){}
+  }
+  const ldMatch = html.match(/<script type="application\/ld\+json">({.+?})<\/script>/);
+  if(!data && ldMatch) {
+    try {
+      const ld = JSON.parse(ldMatch[1]);
+      if(ld?.video) {
+        data = {
+          type:'video', title:ld.name||'', author:ld.author?.name||'',
+          videoUrl: ld.video?.contentUrl||ld.video?.embedUrl||'',
+          cover: ld.thumbnailUrl?.[0]||'',
+          images: [], platform: detectPlatform(url),
+        };
+      }
+    } catch(e){}
+  }
+  if(!data && html.includes('playAddr')) {
+    const pa = html.match(/"playAddr"\s*:\s*"([^"]+)"/);
+    if(pa) {
+      data = {
+        type:'video', title:'', author:'',
+        videoUrl: pa[1].replace(/\\u002F/g,'/').replace(/\\\//g,'/'),
+        cover: '', images: [], platform: 'douyin',
+      };
+    }
+  }
+  return data;
+}
+
+async function tryCorsFallback(url) {
+  for (const proxy of CONFIG.corsProxies) {
+    try {
+      const proxyUrl = proxy(url);
+      const ctrl = new AbortController();
+      const to = setTimeout(()=>ctrl.abort(), 10000);
+      const resp = await fetch(proxyUrl, { signal: ctrl.signal });
+      clearTimeout(to);
+      if(!resp.ok) continue;
+      const html = await resp.text();
+      const data = extractFromHtml(html, url);
+      if(data && data.type!=='unknown') {
+        console.log(`[去水印] CORS代理解析成功`);
+        return data;
+      }
+    } catch(e) {
+      console.log(`[去水印] CORS代理失败:`, e.message);
+    }
+  }
+  return null;
+}
+
+function parse52vmy(json, url) {
+  try {
+    if(json.code===200 && json.data) {
+      const d = json.data;
+      const images = (d.images||[]).filter(Boolean);
+      return {
+        type: images.length>0 ? 'image' : (d.video ? 'video' : 'unknown'),
+        title: d.title||d.desc||'',
+        author: d.author||d.nickname||'',
+        avatar: d.avatar||'',
+        videoUrl: d.video||d.video_url||'',
+        images,
+        cover: d.cover||d.cover_url||d.thumbnail||'',
+        platform: detectPlatform(url),
+      };
+    }
+  } catch(e){}
+  return null;
+}
+
+function parseDyw(json, url) {
+  try {
+    if(json.data) {
+      const d = json.data;
+      const images = (d.images||d.image_urls||[]).filter(Boolean).map(i=>typeof i==='string'?i:(i.url||i));
+      return {
+        type: images.length>0 ? 'image' : (d.video||d.video_url||d.play_addr ? 'video' : 'unknown'),
+        title: d.title||d.desc||'',
+        author: d.author||d.nickname||d.author_name||'',
+        avatar: d.avatar||'',
+        videoUrl: d.video||d.video_url||(d.play_addr?.url_list?.[0])||'',
+        images,
+        cover: d.cover||d.cover_url||d.thumbnail||d.origin_cover||'',
+        platform: detectPlatform(url),
+      };
+    }
+  } catch(e){}
+  return null;
+}
+
+function parseLolimi(json, url) {
+  try {
+    if(json.code===200||json.code===1) {
+      const d = json.data||json;
+      const images = (d.images||d.image_url||d.img_urls||[]).filter(Boolean);
+      const iArr = Array.isArray(images)?images:[images].filter(Boolean);
+      return {
+        type: iArr.length>0 ? 'image' : (d.video||d.video_url||d.url ? 'video' : 'unknown'),
+        title: d.title||d.desc||'',
+        author: d.author||d.nickname||d.name||'',
+        avatar: d.avatar||'',
+        videoUrl: d.video||d.video_url||d.url||'',
+        images: iArr,
+        cover: d.cover||d.cover_url||d.thumbnail||d.pic||'',
+        platform: detectPlatform(url),
+      };
+    }
+  } catch(e){}
+  return null;
+}
+
+function parseGeneric(json, url) {
+  try {
+    const d = json?.data||json?.result||json;
+    if(!d) return null;
+    const images = (d.images||d.image_urls||d.img_urls||d.pics||[]).filter(Boolean);
+    const iArr = Array.isArray(images)?images:[];
+    const video = d.video||d.video_url||d.videoUrl||d.url||d.play||d.play_url||'';
+    return {
+      type: iArr.length>0 ? 'image' : (video ? 'video' : 'unknown'),
+      title: d.title||d.desc||d.description||d.name||'',
+      author: d.author||d.nickname||d.name||d.username||d.author_name||'',
+      avatar: d.avatar||d.avatar_url||'',
+      videoUrl: typeof video==='string'?video:(video?.url_list?.[0])||(video?.url)||'',
+      images: iArr,
+      cover: d.cover||d.cover_url||d.thumbnail||d.poster||d.pic||'',
+      platform: detectPlatform(url),
+    };
+  } catch(e){}
+  return null;
+}
+
+function showToast(msg, type='') {
+  clearTimeout(toastTimer);
+  toast.textContent = msg;
+  toast.className = 'toast '+type;
+  requestAnimationFrame(()=>toast.classList.add('show'));
+  toastTimer = setTimeout(()=>toast.classList.remove('show'), 2800);
+}
+
+function setLoading(show, text) {
+  loading.classList.toggle('show', show);
+  if(text) loadingText.textContent = text;
+  parseBtn.disabled = show;
+}
+
+function showError(msg) {
+  error.textContent = msg;
+  error.classList.add('show');
+}
+
+function hideError() {
+  error.classList.remove('show');
+}
+
+function formatSize(bytes) {
+  if(!bytes||bytes===0) return '';
+  const units = ['B','KB','MB','GB'];
+  let i=0; let size=bytes;
+  while(size>=1024&&i<units.length-1){size/=1024;i++}
+  return size.toFixed(1)+units[i];
+}
+
+function getFileExt(url, type) {
+  if(!url) return type==='video'?'mp4':'jpg';
+  const clean = url.split('?')[0].split('#')[0];
+  const m = clean.match(/\.(\w+)$/);
+  if(m) return m[1];
+  return type==='video'?'mp4':'jpg';
+}
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename||'download';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function downloadFile(url, filename, type) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
+  // For videos: always open in new tab (CDN doesn't allow CORS fetch)
+  // User can right-click / long-press to save
+  if (type === 'video') {
+    window.open(url, '_blank');
+    showToast('已打开视频，请右键/长按选择"保存"', 'success');
+    return true;
+  }
+
+  // For images: try proxy download first, then direct download
+  for (const source of [PROXY_DL ? `${PROXY_DL}?url=${encodeURIComponent(url)}` : null, url]) {
+    if (!source) continue;
+    try {
+      const resp = await fetch(source, { signal: AbortSignal.timeout(20000) });
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      if (isIOS) {
+        window.open(blobUrl, '_blank');
+        showToast('iOS 请在新页面长按保存', 'success');
+      } else {
+        triggerDownload(blobUrl, filename);
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+      return true;
+    } catch (e) {
+      console.log('[去水印] 下载失败:', e.message);
+    }
+  }
+
+  // Last resort: open in new tab
+  window.open(url, '_blank');
+  showToast('请在新页面右键/长按保存', 'success');
+  return true;
+}
+
+async function downloadAll(data) {
+  if(!data) return;
+  let count = 0;
+  if(data.type==='video' && data.videoUrl) {
+    const ext = getFileExt(data.videoUrl, 'video');
+    await downloadFile(data.videoUrl, `${data.title||'video'}.${ext}`, 'video');
+    count++;
+  }
+  if(data.images && data.images.length>0) {
+    for(let i=0;i<data.images.length;i++) {
+      try {
+        const ext = getFileExt(data.images[i], 'image');
+        await downloadFile(data.images[i], `${data.title||'image'}_${i+1}.${ext}`, 'image');
+        count++;
+      } catch(e) {}
+    }
+  }
+  addHistory(data);
+  if(count>0 && data.type!=='video') showToast(`已下载 ${count} 个文件`, 'success');
+}
+
+async function handleParse() {
+  const url = linkInput.value.trim();
+  if(!url) { showToast('请输入链接', 'error'); return; }
+
+  hideError();
+  result.classList.remove('show');
+  currentData = null;
+  setLoading(true, '正在解析...');
+
+  try {
+    const data = await tryParse(url);
+    setLoading(false);
+
+    if(!data || data.type==='unknown') {
+      showError('解析失败。可能原因：① API 服务暂时不可用可稍后重试 ② 链接已失效 ③ 该平台暂不支持。可尝试更换链接或使用电脑端脚本');
+      return;
+    }
+
+    currentData = data;
+    renderResult(data);
+    result.classList.add('show');
+    showToast('解析成功', 'success');
+  } catch(e) {
+    setLoading(false);
+    showError('解析异常: '+e.message);
+  }
+}
+
+function renderResult(data) {
+  resultTitle.textContent = data.title||'无标题';
+  const metaParts = [];
+  if(data.author) metaParts.push(data.author);
+  if(data.type==='video' && data.videoUrl) metaParts.push('🎬 视频');
+  if(data.images?.length) metaParts.push(`🖼 ${data.images.length}张图片`);
+  resultMeta.textContent = metaParts.join(' · ');
+
+  mediaWrap.innerHTML = '';
+  imageGrid.innerHTML = '';
+  actions.innerHTML = '';
+
+  if(data.type==='video' && data.videoUrl) {
+    const video = document.createElement('video');
+    video.src = data.videoUrl;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    video.controls = true;
+    if(data.cover) video.poster = data.cover;
+    video.style.maxHeight = '50vh';
+    mediaWrap.appendChild(video);
+
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'btn btn-primary';
+    dlBtn.innerHTML = '📥 下载视频';
+    dlBtn.onclick = ()=>{ downloadAll(data); };
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'btn btn-secondary';
+    openBtn.innerHTML = '🌐 浏览器打开';
+    openBtn.onclick = ()=>{
+      window.open(data.videoUrl, '_blank');
+      showToast('跳转后长按视频可保存', 'success');
+    };
+
+    actions.appendChild(dlBtn);
+    actions.appendChild(openBtn);
+  }
+
+  if(data.images && data.images.length>0) {
+    const grid = imageGrid;
+    grid.innerHTML = '';
+    const cols = data.images.length===1 ? 1 : (data.images.length<=4 ? 2 : 3);
+    grid.className = `image-grid cols-${cols}`;
+
+    data.images.forEach((imgUrl,i)=>{
+      const img = document.createElement('img');
+      img.src = imgUrl;
+      img.loading = 'lazy';
+      img.alt = `图片 ${i+1}`;
+      img.onerror = ()=>{
+        img.style.display='none';
+        const fallback = document.createElement('div');
+        fallback.style.cssText='aspect-ratio:1;background:var(--surface2);display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--text2);font-size:12px';
+        fallback.textContent = '加载失败';
+        img.parentNode?.insertBefore(fallback, img.nextSibling);
+      };
+      grid.appendChild(img);
+    });
+    if(data.type!=='video') {
+      mediaWrap.innerHTML = '';
+      const firstImg = document.createElement('img');
+      firstImg.src = data.images[0];
+      firstImg.style.maxHeight = '50vh';
+      firstImg.style.objectFit = 'contain';
+      mediaWrap.appendChild(firstImg);
+
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'btn btn-primary';
+      dlBtn.innerHTML = `📥 下载${data.images.length>1?'全部图片':'图片'}`;
+      dlBtn.onclick = ()=>{ downloadAll(data); };
+
+      const openBtn = document.createElement('button');
+      openBtn.className = 'btn btn-secondary';
+      openBtn.innerHTML = '🌐 浏览器打开';
+      openBtn.onclick = ()=>{
+        window.open(data.images[0], '_blank');
+        showToast('跳转后长按图片可保存', 'success');
+      };
+
+      actions.appendChild(dlBtn);
+      actions.appendChild(openBtn);
+    }
+  }
+
+  if(data.cover && data.type==='video' && !mediaWrap.querySelector('img, video')) {
+    const img = document.createElement('img');
+    img.src = data.cover;
+    img.style.maxHeight = '50vh';
+    img.style.objectFit = 'contain';
+    mediaWrap.appendChild(img);
+  }
+}
+
+function addHistory(data) {
+  let list = getHistory();
+  const entry = {
+    id: Date.now(),
+    title: data.title||'无标题',
+    author: data.author||'',
+    type: data.type,
+    videoUrl: data.videoUrl||'',
+    images: data.images||[],
+    cover: data.cover||(data.images?.[0])||'',
+    platform: data.platform||'',
+    time: Date.now(),
+  };
+  list.unshift(entry);
+  if(list.length>50) list = list.slice(0,50);
+  try { localStorage.setItem('wm_history', JSON.stringify(list)); } catch(e) {}
+  renderHistory();
+}
+
+function getHistory() {
+  try {
+    const raw = localStorage.getItem('wm_history');
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function renderHistory() {
+  const list = getHistory();
+  if(list.length===0) {
+    historyList.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无下载记录</p></div>';
+    return;
+  }
+  historyList.innerHTML = '';
+  list.forEach(item=>{
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    const thumb = item.cover
+      ? `<img src="${item.cover}" alt="" onerror="this.style.display='none'">`
+      : `<div class="thumb">${item.type==='video'?'🎬':'🖼'}</div>`;
+    div.innerHTML = `
+      ${thumb}
+      <div class="info">
+        <div class="title">${escHtml(item.title)}</div>
+        <div class="sub">${item.author?escHtml(item.author)+' · ':''}${item.type==='video'?'视频':item.images?.length>1?item.images.length+'张图片':'图片'} · ${timeAgo(item.time)}</div>
+      </div>
+      <button class="del" data-id="${item.id}">✕</button>
+    `;
+    div.querySelector('.del').onclick = (e)=>{
+      e.stopPropagation();
+      removeHistory(item.id);
+    };
+    div.onclick = ()=>{
+      linkInput.value = '';
+      if(item.type==='video' && item.videoUrl) {
+        currentData = {
+          type:'video', title:item.title, author:item.author,
+          videoUrl:item.videoUrl, cover:item.cover, images:item.images||[],
+          platform:item.platform
+        };
+      } else if(item.images?.length>0) {
+        currentData = {
+          type:'image', title:item.title, author:item.author,
+          videoUrl:'', cover:item.cover||item.images[0], images:item.images,
+          platform:item.platform
+        };
+      }
+      if(currentData) renderResult(currentData);
+      result.classList.add('show');
+      result.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    historyList.appendChild(div);
+  });
+}
+
+function removeHistory(id) {
+  let list = getHistory().filter(i=>i.id!==id);
+  try { localStorage.setItem('wm_history', JSON.stringify(list)); } catch(e) {}
+  renderHistory();
+}
+
+function escHtml(s) {
+  if(!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function timeAgo(ts) {
+  const diff = Date.now()-ts;
+  const mins = Math.floor(diff/60000);
+  if(mins<1) return '刚刚';
+  if(mins<60) return mins+'分钟前';
+  const hours = Math.floor(mins/60);
+  if(hours<24) return hours+'小时前';
+  const days = Math.floor(hours/24);
+  if(days<7) return days+'天前';
+  return new Date(ts).toLocaleDateString('zh-CN');
+} 
+
+// Show warning if opened via file://
+if (location.protocol === 'file:') {
+  $('#fileWarning').style.display = 'block';
+} else {
+  $('#fileWarning').style.display = 'none';
+}
+
+parseBtn.onclick = handleParse;
+linkInput.onkeydown = e=>{ if(e.key==='Enter') handleParse(); };
+
+$('#clearHistoryBtn').onclick = ()=>{
+  if(getHistory().length===0) return;
+  if(confirm('确定清空所有下载记录？')) {
+    localStorage.removeItem('wm_history');
+    renderHistory();
+    showToast('已清空');
+  }
+};
+
+renderHistory();
+
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+navigator.clipboard?.readText?.().then(text=>{
+  if(text && text.trim() && !linkInput.value) {
+    const urlMatch = text.match(/https?:\/\/[^\s]+/);
+    if(urlMatch) linkInput.value = urlMatch[0];
+  }
+}).catch(()=>{});
+
+console.log('%c🧹 去水印工具 v1.0','font-size:24px;font-weight:bold;color:#667eea');
+console.log('提示: 如解析失败可更换其他链接重试');
+</script>
+</body>
+</html>
